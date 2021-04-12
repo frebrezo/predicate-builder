@@ -1,4 +1,8 @@
 using LinqKit;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using NLog;
+using NLog.Extensions.Logging;
 using NUnit.Framework;
 using PredicateBuilder.IntegrationTest.Data;
 using PredicateBuilder.IntegrationTest.Model;
@@ -26,6 +30,8 @@ namespace PredicateBuilder.IntegrationTest
             string configDir = Assembly.GetExecutingAssembly().Location;
             Configuration config = ConfigurationManager.OpenExeConfiguration(configDir);
             string connStr = config.ConnectionStrings.ConnectionStrings["PredicateBuilderTest"].ConnectionString;
+            ILoggerFactory loggerFactory = new LoggerFactory();
+            loggerFactory.AddProvider(new NLogLoggerProvider());
 
             _personData = new PersonData(connStr);
             _addressData = new AddressData(connStr);
@@ -36,7 +42,11 @@ namespace PredicateBuilder.IntegrationTest
             _phoneNumberData.Initialize();
 
             // Scaffold-DbContext -Provider Microsoft.EntityFrameworkCore.SqlServer -Connection "Server=.;Database=PredicateBuilderTest;Trusted_Connection=True;" -OutputDir Model
-            _context = new PredicateBuilderTestContext();
+            DbContextOptionsBuilder<PredicateBuilderTestContext> dbContextOptionsBuilder = new DbContextOptionsBuilder<PredicateBuilderTestContext>();
+            dbContextOptionsBuilder.UseSqlServer(connStr);
+            dbContextOptionsBuilder.UseLoggerFactory(loggerFactory);
+            dbContextOptionsBuilder.EnableSensitiveDataLogging();
+            _context = new PredicateBuilderTestContext(dbContextOptionsBuilder.Options);
         }
 
         private Person GetPerson(PersonDto personDto)
